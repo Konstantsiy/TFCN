@@ -1,3 +1,5 @@
+package lab;
+
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -14,70 +16,71 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 // прослушивание несущей
 // обнаружение коллизий
 // расчет случайной задержки по формуле
 // окно коллизий 0.5 сек == 500 мсек
 
-public class Collisions extends Application {
+public class CSMA extends Application {
     private static TextField inputField;
     private static TextField outputField;
     private static TextArea statusArea;
     private static ComboBox<Integer> comboBox;
     public static int value = 0;
 
-    static class MyThread<value> extends Thread {
+    public static class MyRunnable implements Runnable {
+        private String text;
+        private int maxCollisionCount;
 
-        private final String symbol;
-        private final int maxCollisionCount;
-        public Thread t;
-
-        public MyThread(String symbol, int n, String name) {
-            this.symbol = symbol;
-            this.maxCollisionCount = n;
-            t = new Thread(this, name);
+        public MyRunnable(String str, int count) {
+            this.text = str;
+            this.maxCollisionCount = count;
         }
 
         @Override
         public void run() {
-            String c;
-            boolean collision;
-            statusArea.appendText(symbol + ": ");
-            for (int j = 0; j < maxCollisionCount; ) {
-                while(true) {
+            for (String symbol : text.split("")) {
+                boolean collision;
+                int collisionsCount = 0;
+                statusArea.appendText(symbol + ": ");
+                for (int j = 0; j < maxCollisionCount; ) {
+                    while(true) {
+                        try {
+                            if(((int) (Math.random() * 10)) <= 3) break;
+                            Thread.sleep(10);
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
                     try {
-                        if(((int) (Math.random() * 10)) <= 3) break;
-                        sleep(10);
+                        Thread.sleep(500);
                     } catch (InterruptedException ex) {
                         ex.printStackTrace();
                     }
-                }
-                c = symbol;
-                try {
-                    sleep(500);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
-                collision = ((int)(Math.random() * 10) <= 3);
-                if (collision) {
-                    statusArea.appendText("*");
-                    j++;
-                    if (j == maxCollisionCount) break;
-                    try {
-                        sleep(new Random().nextInt((int) Math.pow(2, j)));
-                    } catch (InterruptedException ex) {
-                        ex.printStackTrace();
+                    collision = ((int)(Math.random() * 10) <= 3);
+                    if (collision) {
+                        statusArea.appendText("*");
+                        j++;
+                        if (j == maxCollisionCount) break;
+                        try {
+                            Thread.sleep(new Random().nextInt((int) Math.pow(2, j)));
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
+                    } else {
+                        if (j == 0) statusArea.appendText("");
+                        outputField.appendText(symbol);
+                        break;
                     }
-                } else {
-                    if (j == 0) statusArea.appendText("");
-                    outputField.appendText(c);
-                    break;
                 }
+                statusArea.appendText("\n");
             }
-            statusArea.appendText("\n");
         }
     }
+
 
     public static void main(String[] args) {
         launch(args);
@@ -123,16 +126,8 @@ public class Collisions extends Application {
                 String text = inputField.getText();
                 if(!text.isEmpty()) {
                     int maxCollisionCount = comboBox.getValue();
-                    for (String symbol : text.split("")) {
-                        MyThread t = new MyThread(symbol, maxCollisionCount, "" + value++);
-                        t.start();
-//                        try {
-//                            t.join();
-//                        } catch (InterruptedException interruptedException) {
-//                            interruptedException.printStackTrace();
-//                        }
-                        while(t.isAlive()){}
-                    }
+                    ExecutorService executor = Executors.newSingleThreadExecutor();
+                    executor.execute(new MyRunnable(text, maxCollisionCount));
                 }
                 inputField.clear();
             }
